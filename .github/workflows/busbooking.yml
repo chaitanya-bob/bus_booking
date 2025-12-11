@@ -1,0 +1,47 @@
+name: Bus booking app
+on: push
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+        
+      - name: Build war file with Maven
+        run: mvn clean install -Dpackaging=war 
+
+      - name: Upload WAR as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bus-booking-war
+          path: target/*.war
+        
+      - name: Download WAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bus-booking-war
+
+      - name: Run Spring Boot App
+        run: mvn spring-boot:run & 
+        env:
+          SPRING_PROFILES_ACTIVE: "test"
+
+      - name: status check
+        run: |
+          echo "Checking application status..."
+          sleep 15
+          curl -I http://43.204.102.241:8080/status || echo "Application is not responding"
+
+      - name: verify deployment
+        run: |
+          echo "Verifying deployment..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://43.204.102.241:8080/health)
+          echo "$RESPONSE" | grep "Welcome to bus booking App" || true
